@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -76,7 +77,18 @@ func shelly(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	// Get the listen address
+	addr := os.Getenv("SHELLY_HT_EXPORTER_ADDR")
+	if addr == "" {
+		addr = "127.0.0.1:8090"
+	}
+
+	// register handlers
 	http.HandleFunc("/", shelly)
 	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(":8090", nil)
+
+	fmt.Printf("Listening on on %s\n", addr)
+	if err := http.ListenAndServe(addr, nil); err != nil {
+		fmt.Println("Error starting server:", err)
+	}
 }
