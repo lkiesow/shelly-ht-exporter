@@ -42,3 +42,32 @@ To have your Shelly H&T sensor send data to the Prometheus exporter, you should 
 3. **Testing**:
    - Once set up, the Shelly H&T should start sending requests to the exporter every five minutes
    - You can check the `/metrics` endpoint of the exporter to see if the data has been updated.
+
+## Metrics
+
+The exporter provides a `/metrics` endpoint.
+You can use cURL to test it and get an overview of the available data:
+
+```
+❯ curl http://localhost:8090/metrics
+
+# HELP count_updated The number of updates to a sensor value
+# TYPE count_updated counter
+count_updated{sensor="shellyht-221"} 1
+count_updated{sensor="shellyht-CA62E1"} 2
+...
+# HELP humidity The measured humidity
+# TYPE humidity gauge
+humidity{sensor="shellyht-221"} 52.4
+humidity{sensor="shellyht-CA62E1"} 54.2
+# HELP last_updated_time_seconds Timestamp of the last update in seconds since epoch.
+# TYPE last_updated_time_seconds gauge
+last_updated_time_seconds{sensor="shellyht-221"} 1.731776654e+09
+last_updated_time_seconds{sensor="shellyht-CA62E1"} 1.73177662e+09
+...
+# HELP temperature The measured temperature
+# TYPE temperature gauge
+temperature{sensor="shellyht-221"} 20.7
+temperature{sensor="shellyht-CA62E1"} 21.5
+
+```
