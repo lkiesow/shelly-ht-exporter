@@ -4,18 +4,37 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-type sensor struct {
-	count uint
-	hum   float64
-	temp  float64
-}
+var (
+	humidity = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "humidity",
+		Help: "The measured humidity",
+	}, []string{"sensor"})
+	temperature = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "temperature",
+		Help: "The measured temperature",
+	}, []string{"sensor"})
+	countUpdated = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "count_updated",
+		Help: "The number of updates to a sensor value",
+	}, []string{"sensor"})
+	lastUpdated = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "last_updated_time_seconds",
+		Help: "Timestamp of the last update in seconds since epoch.",
+	}, []string{"sensor"})
+)
 
-var sensors = make(map[string]sensor)
-
-func metrics(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(w, "hello\n")
+func init() {
+	// Register the metrics with Prometheus
+	prometheus.MustRegister(humidity)
+	prometheus.MustRegister(temperature)
+	prometheus.MustRegister(countUpdated)
+	prometheus.MustRegister(lastUpdated)
 }
 
 func parseValue(w *http.ResponseWriter, strval string) (float64, error) {
@@ -29,41 +48,35 @@ func parseValue(w *http.ResponseWriter, strval string) (float64, error) {
 }
 
 func shelly(w http.ResponseWriter, req *http.Request) {
-	for name, headers := range req.Header {
-		for _, h := range headers {
-			fmt.Fprintf(w, "%v: %v\n", name, h)
-		}
+	var err error
+	var hum, temp float64
+	var id string
+
+	fmt.Println("New sensor data:", req.URL.Query())
+
+	// parse sensor values
+	query := req.URL.Query()
+	if hum, err = parseValue(&w, query.Get("hum")); err != nil {
+		return
 	}
-
-	fmt.Println("GET params were:", req.URL.Query())
-
-	// if only one expected
-	hum := req.URL.Query().Get("hum")
-	temp := req.URL.Query().Get("temp")
-	id := req.URL.Query().Get("id")
-	if hum == "" || temp == "" || id == "" {
+	if temp, err = parseValue(&w, query.Get("temp")); err != nil {
+		return
+	}
+	if id = query.Get("id"); id == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("None of the query parameters `hum`, `temp` and `id` may be empty"))
 		return
 	}
 
-	s, ok := sensors[id]
-	s.count += 1
-	var err error
-	if s.hum, err = parseValue(&w, temp); err != nil {
-		return
-	}
-	if s.temp, err = parseValue(&w, temp); err != nil {
-		return
-	}
-	sensors[id] = s
-	fmt.Println("in map:", ok)
-	fmt.Println("sensor:", s)
-	fmt.Println("sensors:", sensors)
+	/// update metrics
+	humidity.WithLabelValues(id).Set(hum)
+	temperature.WithLabelValues(id).Set(temp)
+	countUpdated.WithLabelValues(id).Inc()
+	lastUpdated.WithLabelValues(id).Set(float64(time.Now().Unix()))
 }
 
 func main() {
 	http.HandleFunc("/", shelly)
-	http.HandleFunc("/metrics", metrics)
+	http.Handle("/metrics", promhttp.Handler())
 	http.ListenAndServe(":8090", nil)
 }
