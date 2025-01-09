@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -44,6 +45,7 @@ var (
 		Name: "last_updated_time_seconds",
 		Help: "Timestamp of the last update in seconds since epoch.",
 	}, []string{"sensor"})
+	name_map map[string]string
 )
 
 func init() {
@@ -85,7 +87,13 @@ func shelly(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	/// update metrics
+	// map id to name
+	if name_map[id] != "" {
+		log.Printf("Mapping id %v to %v", id, name_map[id])
+		id = name_map[id]
+	}
+
+	// update metrics
 	humidity.WithLabelValues(id).Set(hum)
 	temperature.WithLabelValues(id).Set(temp)
 	countUpdated.WithLabelValues(id).Inc()
@@ -93,6 +101,17 @@ func shelly(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	// Parse configuration for mapping IDs to nice names
+	name_map_config := os.Getenv("SHELLY_HT_EXPORTER_NAME_MAP")
+	if name_map_config != "" {
+		err := json.Unmarshal([]byte(name_map_config), &name_map)
+		if err != nil {
+			log.Println("Name map config:", name_map_config)
+			log.Fatalf("Error parsing JSON: %s", err)
+		}
+	}
+	log.Println("Mapping configuration:", name_map)
+
 	// Get the listen address
 	addr := os.Getenv("SHELLY_HT_EXPORTER_ADDR")
 	if addr == "" {

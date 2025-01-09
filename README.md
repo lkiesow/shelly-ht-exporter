@@ -43,6 +43,22 @@ To have your Shelly H&T sensor send data to the Prometheus exporter, you should 
    - Once set up, the Shelly H&T should start sending requests to the exporter every five minutes
    - You can check the `/metrics` endpoint of the exporter to see if the data has been updated.
 
+## Map Sensors to Human Readaable IDs
+
+The Shelly H&T sensors all have a unique identifier like `shellyht-CC5AS8`.
+Unfortunately, this is not very nice to remember if you have several sensors.
+To make your life easier, you can use the `SHELLY_HT_EXPORTER_NAME_MAP` environment variable to map those IDs to nice, human readable names.
+
+```
+export SHELLY_HT_EXPORTER_NAME_MAP='{"shellyht-CC5AS8":"living room"}'
+./shelly-ht-exporter
+```
+
+The value of that variable should be a JSON object specifying a map of IDs and names.
+The names should be unique.
+They will replace the actual ID in the metrics.
+
+
 ## Metrics
 
 The exporter provides a `/metrics` endpoint.
