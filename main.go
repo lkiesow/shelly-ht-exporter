@@ -17,7 +17,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -69,7 +69,7 @@ func shelly(w http.ResponseWriter, req *http.Request) {
 	var hum, temp float64
 	var id string
 
-	fmt.Println("New sensor data:", req.URL.Query())
+	log.Println("New sensor data:", req.URL.Query())
 
 	// parse sensor values
 	query := req.URL.Query()
@@ -103,8 +103,8 @@ func main() {
 	http.HandleFunc("/", shelly)
 	http.Handle("/metrics", promhttp.Handler())
 
-	fmt.Printf("Listening on on %s\n", addr)
+	log.Printf("Listening on on %s", addr)
 	if err := http.ListenAndServe(addr, nil); err != nil {
-		fmt.Println("Error starting server:", err)
+		log.Fatalf("Error starting server:", err)
 	}
 }
